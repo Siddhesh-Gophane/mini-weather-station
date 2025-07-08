@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mini Weather Station Dashboard</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 250px;
+      background: linear-gradient(160deg, #232526 0%, #485563 60%, #00c6ff 100%);
+      padding: 32px 0 24px 0;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      z-index: 100;
+      box-shadow: 2px 0 16px rgba(44,62,80,0.10);
+      border-right: 3px solid #00c6ff;
+    }
+    .sidebar .sidebar-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #00c6ff;
+      margin-bottom: 38px;
+      text-align: center;
+      letter-spacing: 2px;
+      text-shadow: 1px 1px 8px #232526;
+    }
+    .sidebar .nav {
+      flex-direction: column;
+      gap: 10px;
+      padding-left: 0;
+      margin-bottom: 0;
+    }
+    .sidebar .nav-link {
+      padding: 12px 18px;
+      color: #fff;
+      border-radius: 12px;
+      margin-bottom: 10px;
+      font-size: 1.12rem;
+      font-weight: 600;
+      transition: 
+        background 0.25s, 
+        color 0.2s, 
+        box-shadow 0.2s, 
+        transform 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border: none;
+      background: none;
+      box-shadow: none;
+      letter-spacing: 1px;
+      position: relative;
+      overflow: hidden;
+      /* Reduce padding to prevent overflow when active */
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+    .sidebar .nav-link.active,
+    .sidebar .nav-link:focus,
+    .sidebar .nav-link:hover {
+      background: linear-gradient(90deg, #00c6ff 0%, #0072ff 100%);
+      color: #fff;
+      text-decoration: none;
+      box-shadow: 0 2px 16px rgba(0,198,255,0.13);
+      font-weight: 700;
+      transform: scale(1);
+      /* Remove translateX to keep content inside sidebar */
+    }
+    .sidebar .nav-link.active::before,
+    .sidebar .nav-link:focus::before,
+    .sidebar .nav-link:hover::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 100%;
+      width: 6px;
+      background: linear-gradient(180deg, #00c6ff 0%, #0072ff 100%);
+      border-radius: 0 8px 8px 0;
+      z-index: 1;
+    }
+    .sidebar .nav-link i {
+      font-size: 1.3rem;
+      color: #00c6ff;
+      transition: color 0.2s;
+      z-index: 2;
+    }
+    .sidebar .nav-link.active i,
+    .sidebar .nav-link:focus i,
+    .sidebar .nav-link:hover i {
+      color: #fff;
+    }
+    .main-content {
+      margin-left: 250px;
+      padding: 32px 24px 24px 24px;
+      min-height: 100vh;
+      background: #f8f9fa;
+      overflow-x: hidden;
+    }
+    @media (max-width: 991.98px) {
+      .sidebar {
+        position: static;
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        align-items: center;
+        padding: 12px 0;
+        box-shadow: none;
+        border-right: none;
+      }
+      .sidebar .sidebar-title {
+        margin-bottom: 0;
+        font-size: 1.1rem;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 16px 8px;
+      }
+    }
+    .card {
+      border-radius: 15px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .dashboard-title {
+      font-weight: 600;
+      color: #343a40;
+    }
+    .chart-container {
+      background: white;
+      border-radius: 15px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .section-title {
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+    .mws-card {
+      background-color: #f1f3f7;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+    .mws-title {
+      font-weight: 600;
+      font-size: 1.2rem;
+    }
+    .location {
+      color: #6c757d;
+    }
+    .view-link {
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .view-link:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .chart-toggle {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+
+    .chart-toggle button {
+      background-color: #ffffff;
+      border: 2px solid #dee2e6;
+      padding: 10px 16px;
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .chart-toggle button.active {
+      background-color: #ffe8cc;
+      border-color: #ffa94d;
+      color: #d9480f;
+    }
+
+    canvas {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+      padding: 20px;
+    }
+
+    .legend {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+      gap: 20px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 8px;
+      border-radius: 50%;
+    }
+
+    .temp::before { background-color: red; }
+    .hum::before { background-color: blue; }
+    .index::before { background-color: orange; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-title">MWS Menu</div>
+    <ul class="nav">
+      <li class="nav-item">
+        <a class="nav-link active" href="#" id="dashboard-link">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="devices-link">
+          <i class="bi bi-hdd-network"></i> Devices
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="registration-link">
+          <i class="bi bi-journal-plus"></i> MSW Registration
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="client-link">
+          <i class="bi bi-person-badge"></i> Client
+        </a>
+      </li>
+
+      <li class="nav-item">
+        <a class="nav-link" href="#" id="setting-link">
+          <i class="bi bi-gear"></i> setting
+        </a>
+      </li>
+
+    </ul>
+  </div>
+  <div class="main-content">
+    <!-- Dashboard Section -->
+    <div id="dashboard-section">
+      <h2 class="dashboard-title fw-bold">Mini Weather Station Dashboard</h2>
+
+      <!-- Summary Cards -->
+      <div class="row g-2 mt-2">
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-hdd-network-fill text-primary fs-3 mb-2"></i>
+            <h4>10</h4>
+            <p>Total Devices</p>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-check-circle-fill text-success fs-3 mb-2"></i>
+            <h4>8</h4>
+            <p>Active Devices</p>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-x-circle-fill text-danger fs-3 mb-2"></i>
+            <h4>2</h4>
+            <p>Inactive Devices</p>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-thermometer-sun text-warning fs-3 mb-2"></i>
+            <h4>29°C</h4>
+            <p>Temperature</p>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-droplet-half text-info fs-3 mb-2"></i>
+            <h4>78%</h4>
+            <p>Humidity</p>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <div class="card text-center p-3">
+            <i class="bi bi-activity text-secondary fs-3 mb-2"></i>
+            <h4>83</h4>
+            <p>THI Index</p>
+          </div>
+        </div>
+      </div>
+     <!-- map  -->
+<style>
+    #map {
+        height: 400px;
+    }
+</style>
+<div class="container mt-4">
+    <h3 class="mb-4">Device Map Filter</h3>
+    <form class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label for="stateSelect" class="form-label">State</label>
+            <select id="stateSelect" class="form-select">
+                <option value="">Select State</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="districtSelect" class="form-label">District</label>
+            <select id="districtSelect" class="form-select">
+                <option value="">Select District</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="talukaSelect" class="form-label">Taluka</label>
+            <select id="talukaSelect" class="form-select">
+                <option value="">Select Taluka</option>
+            </select>
+        </div>
+    </form>
+    <div id="map"></div>
+</div>
+<script>
+    // Sample data
+    const data = {
+        "Maharashtra": {
+            "Pune": ["Haveli", "Mulshi"],
+            "Mumbai": ["Andheri", "Borivali"]
+        },
+        "Gujarat": {
+            "Ahmedabad": ["Daskroi", "Sanand"],
+            "Surat": ["Choryasi", "Kamrej"]
+        }
+    };
+
+    const devices = [
+        { name: "Device 1", state: "Maharashtra", district: "Pune", taluka: "Haveli", lat: 18.5204, lng: 73.8567 },
+        { name: "Device 2", state: "Maharashtra", district: "Pune", taluka: "Mulshi", lat: 18.5167, lng: 73.3667 },
+        { name: "Device 3", state: "Maharashtra", district: "Mumbai", taluka: "Andheri", lat: 19.1197, lng: 72.8468 },
+        { name: "Device 4", state: "Gujarat", district: "Ahmedabad", taluka: "Daskroi", lat: 23.0225, lng: 72.5714 },
+        { name: "Device 5", state: "Gujarat", district: "Surat", taluka: "Kamrej", lat: 21.1702, lng: 72.8311 }
+    ];
+
+    // Populate State dropdown
+    const stateSelect = document.getElementById('stateSelect');
+    const districtSelect = document.getElementById('districtSelect');
+    const talukaSelect = document.getElementById('talukaSelect');
+
+    function populateStates() {
+        stateSelect.innerHTML = '<option value="">Select State</option>';
+        Object.keys(data).forEach(state => {
+            stateSelect.innerHTML += `<option value="${state}">${state}</option>`;
+        });
+    }
+
+    function populateDistricts() {
+        districtSelect.innerHTML = '<option value="">Select District</option>';
+        talukaSelect.innerHTML = '<option value="">Select Taluka</option>';
+        const state = stateSelect.value;
+        if (state && data[state]) {
+            Object.keys(data[state]).forEach(district => {
+                districtSelect.innerHTML += `<option value="${district}">${district}</option>`;
+            });
+        }
+    }
+
+    function populateTalukas() {
+        talukaSelect.innerHTML = '<option value="">Select Taluka</option>';
+        const state = stateSelect.value;
+        const district = districtSelect.value;
+        if (state && district && data[state][district]) {
+            data[state][district].forEach(taluka => {
+                talukaSelect.innerHTML += `<option value="${taluka}">${taluka}</option>`;
+            });
+        }
+    }
+
+    // Map setup
+    const map = L.map('map').setView([20.5937, 78.9629], 5);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    let markers = [];
+
+    function clearMarkers() {
+        markers.forEach(marker => map.removeLayer(marker));
+        markers = [];
+    }
+
+    function filterDevices() {
+        const state = stateSelect.value;
+        const district = districtSelect.value;
+        const taluka = talukaSelect.value;
+        let filtered = devices;
+        if (state) filtered = filtered.filter(d => d.state === state);
+        if (district) filtered = filtered.filter(d => d.district === district);
+        if (taluka) filtered = filtered.filter(d => d.taluka === taluka);
+
+        clearMarkers();
+        if (filtered.length > 0) {
+            filtered.forEach(device => {
+                const marker = L.marker([device.lat, device.lng]).addTo(map)
+                    .bindPopup(`<b>${device.name}</b><br>${device.state}, ${device.district}, ${device.taluka}`);
+                markers.push(marker);
+            });
+            map.setView([filtered[0].lat, filtered[0].lng], 10);
+        }
+    }
+
+    stateSelect.addEventListener('change', () => {
+        populateDistricts();
+        filterDevices();
+    });
+    districtSelect.addEventListener('change', () => {
+        populateTalukas();
+        filterDevices();
+    });
+    talukaSelect.addEventListener('change', filterDevices);
+
+    populateStates();
+    filterDevices();
+</script>
+      <!-- Device Detail -->
+      <div class=" py-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h4 class="section-title">MWS Details</h4>
+        <select class="form-select w-auto" id="deviceSelect">
+            <option value="MWS-001" selected>MWS-001</option>
+            <option value="MWS-002">MWS-002</option>
+            <option value="MWS-003">MWS-003</option>
+        </select>
+        </div>
+
+        <div class="mws-card d-flex justify-content-between align-items-center">
+          <div>
+            <div class="mws-title">MWS-001</div>
+            <div class="location">Shrirampur 413720</div>
+          </div>
+          <a href="view_details.html" class="view-link">View Details &rarr;</a>
+        </div>
+      </div>
+
+      <div class="mb-5">
+          <div class="chart-toggle">
+              <button class="active" onclick="showGraph('all', this)">All</button>
+              <button onclick="showGraph('temp', this)">Temperature</button>
+              <button onclick="showGraph('hum', this)">Humidity</button>
+              <button onclick="showGraph('index', this)">Index</button>
+          </div>
+      
+          <canvas id="sensorChart" height="100"></canvas>
+      
+          <div class="legend">
+              <span class="temp">Temperature</span>
+              <span class="hum">Humidity</span>
+              <span class="index">Index</span>
+          </div>
+      </div>
+
+     
+
+   
+    </div>
+    <!-- Devices Section -->
+    <div id="devices-section" style="display:none;">
+      <h2 class="dashboard-title fw-bold mb-4">Devices</h2>
+      <button class="btn btn-primary mb-3" id="addDeviceBtn"><i class="bi bi-plus-circle"></i> Add Device</button>
+      <!-- Add Device Modal -->
+      <div class="modal fade" id="addDeviceModal" tabindex="-1" aria-labelledby="addDeviceModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <form id="deviceForm">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="addDeviceModalLabel">Add Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-2">
+                  <label class="form-label">Device ID</label>
+                  <input type="text" class="form-control" name="deviceId" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Device Name</label>
+                  <input type="text" class="form-control" name="deviceName" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Client Name</label>
+                  <input type="text" class="form-control" name="clientName" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Site</label>
+                  <input type="text" class="form-control" name="site" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Added On</label>
+                  <input type="date" class="form-control" name="addedOn" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Status</label>
+                  <select class="form-select" name="status" required>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <!-- Device Details Section -->
+                <div class="border rounded p-2 mt-3 bg-light">
+                  <h6 class="mb-2">Device Details</h6>
+                  <div class="mb-2">
+                    <label class="form-label">Transformer Rating</label>
+                    <input type="text" class="form-control" name="transformerRating" placeholder="e.g. 2000 kVA">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">No Load Voltage HV</label>
+                    <input type="text" class="form-control" name="noLoadVoltageHV" placeholder="e.g. 33000V">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">No Load Voltage LV</label>
+                    <input type="text" class="form-control" name="noLoadVoltageLV" placeholder="e.g. 433V">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Rated Current HV</label>
+                    <input type="text" class="form-control" name="ratedCurrentHV" placeholder="e.g. 35A">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Rated Current LV</label>
+                    <input type="text" class="form-control" name="ratedCurrentLV" placeholder="e.g. 3000A">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Phase</label>
+                    <input type="text" class="form-control" name="phase" placeholder="e.g. 3">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Vector Config LV Side</label>
+                    <input type="text" class="form-control" name="vectorConfigLV" placeholder="e.g. star">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Impedance Voltage</label>
+                    <input type="text" class="form-control" name="impedanceVoltage" placeholder="e.g. 1.00%">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Conservator Tank Diameter</label>
+                    <input type="text" class="form-control" name="conservatorTankDiameter" placeholder="e.g. 60 cm">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">OLTC Counter</label>
+                    <input type="text" class="form-control" name="oltcCounter" placeholder="e.g. --">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Manufacturing Year</label>
+                    <input type="text" class="form-control" name="manufacturingYear" placeholder="e.g. 2014">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Commissioning Year</label>
+                    <input type="text" class="form-control" name="commissioningYear" placeholder="e.g. 2015">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">High Tension Meter</label>
+                    <input type="text" class="form-control" name="highTensionMeter" placeholder="e.g. No">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Latitude</label>
+                    <input type="text" class="form-control" name="latitude" placeholder="e.g. 19.61982">
+                  </div>
+                  <div class="mb-2">
+                    <label class="form-label">Longitude</label>
+                    <input type="text" class="form-control" name="longitude" placeholder="e.g. 74.62338">
+                  </div>
+                </div>
+                <!-- End Device Details Section -->
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Add Device</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle" id="devicesTable">
+          <thead class="table-light">
+            <tr>
+              <th>Device ID</th>
+              <th>Device Name</th>
+              <th>Client Name</th>
+              <th>Site</th>
+              <th>Added On</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>MWS-001</td>
+              <td>Weather Station Alpha</td>
+              <td>Lactalis</td>
+              <td>Shrirampur</td>
+              <td>2024-01-08</td>
+              <td><span class="badge bg-success">Active</span></td>
+            </tr>
+            <tr>
+              <td>MWS-002</td>
+              <td>Weather Station Beta</td>
+              <td>Acme Corp</td>
+              <td>Pune</td>
+              <td>2024-02-12</td>
+              <td><span class="badge bg-danger">Inactive</span></td>
+            </tr>
+            <tr>
+              <td>MWS-003</td>
+              <td>Weather Station Gamma</td>
+              <td>Lactalis</td>
+              <td>Mumbai</td>
+              <td>2024-03-15</td>
+              <td><span class="badge bg-success">Active</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- MSW Registration Section -->
+    <div id="msw-registration-section" style="display:none;">
+      <h2 class="dashboard-title fw-bold mb-4">MSW Registration</h2>
+      <form id="mswRegistrationForm" class="mb-4">
+        <div class="row g-2">
+          <div class="col-md-3">
+            <label class="form-label">Device ID</label>
+            <input type="text" class="form-control" name="deviceId" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Device Name</label>
+            <input type="text" class="form-control" name="deviceName" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Location</label>
+            <input type="text" class="form-control" name="location" required>
+          </div>
+          <div class="col-md-2">
+            <label class="form-label">Registration Date</label>
+            <input type="date" class="form-control" name="registrationDate" required>
+          </div>
+          <div class="col-md-1">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status" required>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-success mt-3">Register Device</button>
+      </form>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle" id="mswDevicesTable">
+          <thead class="table-light">
+            <tr>
+              <th>Device ID</th>
+              <th>Device Name</th>
+              <th>Location</th>
+              <th>Registration Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Registered devices will appear here -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <!-- Client Section -->
+    <div id="client-section" style="display:none;">
+      <h2 class="dashboard-title fw-bold mb-4">Client</h2>
+      <button class="btn btn-primary mb-3" id="addClientBtn"><i class="bi bi-plus-circle"></i> Add Client</button>
+      <!-- Add Client Modal -->
+      <div class="modal fade" id="addClientModal" tabindex="-1" aria-labelledby="addClientModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <form id="clientForm">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="addClientModalLabel">Add Client</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-2">
+                  <label class="form-label">Client Name</label>
+                  <input type="text" class="form-control" name="clientName" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Sites</label>
+                  <input type="text" class="form-control" name="sites" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Admin Name</label>
+                  <input type="text" class="form-control" name="adminName" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Designation</label>
+                  <input type="text" class="form-control" name="designation" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Phone Number</label>
+                  <input type="text" class="form-control" name="phoneNumber" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Email Address</label>
+                  <input type="email" class="form-control" name="email" required>
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Status</label>
+                  <select class="form-select" name="status" required>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="submit" class="btn btn-success">Add Client</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle" id="clientsTable">
+          <thead class="table-light">
+            <tr>
+              <th>Client Name</th>
+              <th>Sites</th>
+              <th>Admin Name</th>
+              <th>Designation</th>
+              <th>Phone Number</th>
+              <th>Email Address</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Lactalis</td>
+              <td>ICRTC Pune</td>
+              <td>Suraj Rathod</td>
+              <td>Manager</td>
+              <td>9876543210</td>
+              <td>info@lactalis.com</td>
+              <td><span class="badge bg-success">Active</span></td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td>Acme Corp</td>
+              <td>Pune, Mumbai</td>
+              <td>Priya Sharma</td>
+              <td>Admin</td>
+              <td>9123456789</td>
+              <td>priya@acme.com</td>
+              <td><span class="badge bg-danger">Inactive</span></td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></button>
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="setting-section" style="display:none;">
+      <div class="container py-4">
+        <div class="card shadow-sm mb-4">
+          <div class="card-body">
+            <h3 class="card-title mb-3 fw-bold"><i class="bi bi-arrow-repeat text-primary"></i> Update Firmware</h3>
+            <div class="mb-4">
+              <label class="form-label fw-semibold">Firmware File</label>
+              <input class="form-control w-50" type="file" />
+            
+            </div>
+            <hr>
+            <h4 class="fw-bold mb-3"><i class="bi bi-hdd-network text-info"></i> Select Devices</h4>
+            <!-- Selection Mode -->
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Selection Mode</label>
+              <div class="btn-group" role="group" aria-label="Selection Mode">
+                <input type="radio" class="btn-check" name="mode" id="single" value="single" autocomplete="off" onclick="changeMode('single')">
+                <label class="btn btn-outline-primary" for="single"><i class="bi bi-person"></i> Single</label>
+                <input type="radio" class="btn-check" name="mode" id="multiple" value="multiple" autocomplete="off" onclick="changeMode('multiple')">
+                <label class="btn btn-outline-primary" for="multiple"><i class="bi bi-people"></i> Multiple</label>
+                <input type="radio" class="btn-check" name="mode" id="all" value="all" autocomplete="off" onclick="changeMode('all')">
+                <label class="btn btn-outline-primary" for="all"><i class="bi bi-list-check"></i> All</label>
+              </div>
+            </div>
+            <!-- Item Selector -->
+            <div id="itemSelector" class="mb-3"></div>
+            <button class="btn btn-success px-4" onclick="showSelection()"><i class="bi bi-upload"></i> Submit</button>
+            <p class="mt-3" id="output"></p>
+          </div>
+        </div>
+      </div>
+      <script>
+        const items = [
+          'MWS-001 (Shrirampur)',
+          'MWS-002 (Pune)',
+          'MWS-003 (Mumbai)',
+          'MWS-004 (Ahmedabad)',
+          'MWS-005 (Surat)'
+        ];
+
+        function changeMode(mode) {
+          const selector = document.getElementById('itemSelector');
+          selector.innerHTML = '';
+
+          if (mode === 'single') {
+            const select = document.createElement('select');
+            select.className = 'form-select w-50';
+            select.id = 'itemInput';
+            select.innerHTML = `<option disabled selected>Select one device</option>` +
+              items.map(i => `<option value="${i}">${i}</option>`).join('');
+            selector.appendChild(select);
+          }
+          else if (mode === 'multiple') {
+            const select = document.createElement('select');
+            select.className = 'form-select w-50';
+            select.setAttribute('multiple', true);
+            select.id = 'itemInput';
+            select.size = items.length;
+            select.innerHTML = items.map(i => `<option value="${i}">${i}</option>`).join('');
+            selector.appendChild(select);
+            const hint = document.createElement('div');
+            hint.className = 'form-text';
+            hint.innerText = 'Hold Ctrl (Windows) or Cmd (Mac) to select multiple devices.';
+            selector.appendChild(hint);
+          }
+          else if (mode === 'all') {
+            selector.innerHTML = `<div class="alert alert-success mb-0"><i class="bi bi-check-circle"></i> All devices will be selected automatically.</div>`;
+          }
+        }
+
+        function showSelection() {
+          const mode = document.querySelector('input[name="mode"]:checked')?.value;
+          const output = document.getElementById('output');
+
+          if (!mode) {
+            output.innerHTML = `<span class="text-danger">Please select a mode.</span>`;
+            return;
+          }
+
+          if (mode === 'all') {
+            output.innerHTML = `<span class="text-success fw-semibold">Selected:</span> ${items.join(', ')}`;
+            return;
+          }
+
+          const input = document.getElementById('itemInput');
+          if (!input) {
+            output.innerHTML = `<span class="text-danger">Please select device(s).</span>`;
+            return;
+          }
+          const selected = [...input.selectedOptions].map(opt => opt.value);
+          if (selected.length === 0) {
+            output.innerHTML = `<span class="text-danger">Please select device(s).</span>`;
+            return;
+          }
+          output.innerHTML = `<span class="text-success fw-semibold">Selected:</span> ${selected.join(', ')}`;
+        }
+      </script>
+    </div>
+
+    
+
+
+  <!-- Chart.js Scripts -->
+  <script>
+    const windCtx = document.getElementById("windChart").getContext("2d");
+    new Chart(windCtx, {
+      type: "line",
+      data: {
+        labels: ["10:00", "11:00", "12:00", "13:00"],
+        datasets: [{
+          label: "Wind Speed (km/h)",
+          data: [10.5, 12.4, 11.8, 13.2],
+          borderColor: "#0d6efd",
+          backgroundColor: "rgba(13, 110, 253, 0.2)",
+          fill: true,
+          tension: 0.4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "top" } },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+
+    const rainCtx = document.getElementById("rainChart").getContext("2d");
+    new Chart(rainCtx, {
+      type: "bar",
+      data: {
+        labels: ["Monday", "Tuesday", "Wednesday"],
+        datasets: [{
+          label: "Rainfall (mm)",
+          data: [5.6, 2.3, 6.8],
+          backgroundColor: "#198754"
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: {
+          y: { beginAtZero: true }
+        }
+      }
+    });
+  </script>
+<!-- chart 2 -->
+  <script>
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+
+    const labels = ['10:55', '11:00', '11:05', '11:10', '11:15', '11:20', '11:25', '11:30', '11:35'];
+
+    const datasets = {
+      temp: {
+        label: 'Temperature (°C)',
+        data: [28, 29, 30, 31, 30.5, 31.5, 32, 33, 34],
+        borderColor: 'red',
+        backgroundColor: 'rgba(255,0,0,0.1)',
+        tension: 0.4,
+        pointRadius: 3
+      },
+      hum: {
+        label: 'Humidity (%)',
+        data: [60, 61, 62, 63, 64, 65, 66, 67, 68],
+        borderColor: 'blue',
+        backgroundColor: 'rgba(0,0,255,0.1)',
+        tension: 0.4,
+        pointRadius: 3
+      },
+      index: {
+        label: 'THI Index',
+        data: [75, 76, 78, 79, 80, 81, 82, 83, 84],
+        borderColor: 'orange',
+        backgroundColor: 'rgba(255,165,0,0.1)',
+        tension: 0.4,
+        pointRadius: 3
+      }
+    };
+
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [datasets.temp, datasets.hum, datasets.index]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false
+          }
+        }
+      }
+    });
+
+    function showGraph(type, btn) {
+      document.querySelectorAll('.chart-toggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (type === 'all') {
+        chart.data.datasets = [datasets.temp, datasets.hum, datasets.index];
+      } else {
+        chart.data.datasets = [datasets[type]];
+      }
+      chart.update();
+    }
+  </script>
+    <script>
+      // Sidebar tab switching logic
+      const dashboardLink = document.getElementById('dashboard-link');
+      const devicesLink = document.getElementById('devices-link');
+      const clientLink = document.getElementById('client-link');
+      const registrationLink = document.getElementById('registration-link');
+      const dashboardSection = document.getElementById('dashboard-section');
+      const devicesSection = document.getElementById('devices-section');
+      const clientSection = document.getElementById('client-section');
+      const mswRegistrationSection = document.getElementById('msw-registration-section');
+      const sidebarLinks = document.querySelectorAll('.sidebar .nav-link');
+      // Add reference for setting link and section
+      const settingLink = document.getElementById('setting-link');
+      const settingSection = document.getElementById('setting-section');
+
+      dashboardLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        dashboardSection.style.display = '';
+        devicesSection.style.display = 'none';
+        clientSection.style.display = 'none';
+        mswRegistrationSection.style.display = 'none';
+        settingSection.style.display = 'none';
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        dashboardLink.classList.add('active');
+      });
+      devicesLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        dashboardSection.style.display = 'none';
+        devicesSection.style.display = '';
+        clientSection.style.display = 'none';
+        mswRegistrationSection.style.display = 'none';
+        settingSection.style.display = 'none';
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        devicesLink.classList.add('active');
+      });
+      clientLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        dashboardSection.style.display = 'none';
+        devicesSection.style.display = 'none';
+        clientSection.style.display = '';
+        mswRegistrationSection.style.display = 'none';
+        settingSection.style.display = 'none';
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        clientLink.classList.add('active');
+      });
+      registrationLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        dashboardSection.style.display = 'none';
+        devicesSection.style.display = 'none';
+        clientSection.style.display = 'none';
+        mswRegistrationSection.style.display = '';
+        settingSection.style.display = 'none';
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        registrationLink.classList.add('active');
+      });
+      // Add event handler for setting link
+      settingLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        dashboardSection.style.display = 'none';
+        devicesSection.style.display = 'none';
+        clientSection.style.display = 'none';
+        mswRegistrationSection.style.display = 'none';
+        settingSection.style.display = '';
+        sidebarLinks.forEach(l => l.classList.remove('active'));
+        settingLink.classList.add('active');
+      });
+
+      // Add Device Modal logic
+      const addDeviceBtn = document.getElementById('addDeviceBtn');
+      const addDeviceModal = new bootstrap.Modal(document.getElementById('addDeviceModal'));
+      addDeviceBtn.addEventListener('click', function() {
+        document.getElementById('deviceForm').reset();
+        addDeviceModal.show();
+      });
+      document.getElementById('deviceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const table = document.getElementById('devicesTable').getElementsByTagName('tbody')[0];
+        const row = table.insertRow();
+        row.innerHTML = `
+          <td>${form.deviceId.value}</td>
+          <td>${form.deviceName.value}</td>
+          <td>${form.clientName.value}</td>
+          <td>${form.site.value}</td>
+          <td>${form.addedOn.value}</td>
+          <td><span class="badge ${form.status.value === 'Active' ? 'bg-success' : 'bg-danger'}">${form.status.value}</span></td>
+        `;
+        addDeviceModal.hide();
+      });
+
+      // MSW Registration Form logic
+      document.getElementById('mswRegistrationForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const table = document.getElementById('mswDevicesTable').getElementsByTagName('tbody')[0];
+        const row = table.insertRow();
+        row.innerHTML = `
+          <td>${form.deviceId.value}</td>
+          <td>${form.deviceName.value}</td>
+          <td>${form.location.value}</td>
+          <td>${form.registrationDate.value}</td>
+          <td><span class="badge ${form.status.value === 'Active' ? 'bg-success' : 'bg-danger'}">${form.status.value}</span></td>
+        `;
+        form.reset();
+      });
+
+      // Add Client Modal logic
+      const addClientBtn = document.getElementById('addClientBtn');
+      const addClientModal = new bootstrap.Modal(document.getElementById('addClientModal'));
+      addClientBtn.addEventListener('click', function() {
+        document.getElementById('clientForm').reset();
+        addClientModal.show();
+      });
+      document.getElementById('clientForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const form = e.target;
+        const table = document.getElementById('clientsTable').getElementsByTagName('tbody')[0];
+        const row = table.insertRow();
+        row.innerHTML = `
+          <td>${form.clientName.value}</td>
+          <td>${form.sites.value}</td>
+          <td>${form.adminName.value}</td>
+          <td>${form.designation.value}</td>
+          <td>${form.phoneNumber.value}</td>
+          <td>${form.email.value}</td>
+          <td><span class="badge ${form.status.value === 'Active' ? 'bg-success' : 'bg-danger'}">${form.status.value}</span></td>
+          <td>
+            <button class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        addClientModal.hide();
+      });
+
+      // Settings form logic (UI only)
+      document.getElementById('settingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        document.getElementById('settingsSavedMsg').classList.remove('d-none');
+        setTimeout(() => {
+          document.getElementById('settingsSavedMsg').classList.add('d-none');
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>

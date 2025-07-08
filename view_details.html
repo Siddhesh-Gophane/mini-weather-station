@@ -1,0 +1,1071 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MWS</title>
+    <link rel="stylesheet" href="dashboard.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/apexcharts/dist/apexcharts.css" />
+    <style>
+        .tab-active {
+            border-bottom: 3px solid #fd7e14;
+            font-weight: 600;
+        }
+
+        .status-switch {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .scroll {
+            max-height: 400px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            border: 1px solid #dee2e6;
+            padding: 1rem;
+            background-color: #fff;
+        }
+
+        .nav-link {
+            cursor: pointer;
+        }
+
+        /* sensors */
+        .btn-toggle {
+            border-radius: 25px;
+            padding: 6px 16px;
+            margin: 2px;
+            border: 1px solid #ccc;
+        }
+
+        .btn-toggle.active {
+            background-color: #ffa726;
+            color: #fff;
+        }
+
+        .kpi-card {
+            border: 1px solid #ddd;
+            padding: 10px 15px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn-outline-secondary.active {
+            background-color: #f7941d;
+            color: #fff;
+            border-color: #f7941d;
+        }
+
+        .apexcharts-legend-text {
+            font-size: 14px;
+        }
+
+        /* Chart/legend styles for overview */
+        .chart-toggle {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        .chart-toggle button {
+            background-color: #fff;
+            border: 2px solid #dee2e6;
+            padding: 10px 16px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .chart-toggle button.active {
+            background-color: #ffe8cc;
+            border-color: #ffa94d;
+            color: #d9480f;
+        }
+
+        canvas {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 16px;
+            gap: 20px;
+        }
+
+        .legend span {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .legend span::before {
+            content: "";
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            border-radius: 50%;
+        }
+
+        .temp::before {
+            background-color: red;
+        }
+
+        .hum::before {
+            background-color: blue;
+        }
+
+        .index::before {
+            background-color: orange;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-4">
+        <a class="btn btn-secondary mb-3" href="main.html">Back</a>
+        <div class="d-flex justify-content-between flex-wrap align-items-start mb-2">
+            <div>
+                <h4 class="mb-1">MWS-001</h4>
+                <small class="text-muted">Agricultural College Dairy Pune, Maharashtra 411020</small>
+            </div>
+        </div>
+        <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button"
+                    role="tab">Overview</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button"
+                    role="tab">Details</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="sensors-tab" data-bs-toggle="tab" data-bs-target="#sensors" type="button"
+                    role="tab">Sensors</button>
+            </li>
+        </ul>
+        <div class="tab-content" id="myTabContent">
+            <!-- Overview Tab -->
+            <div class="tab-pane fade" id="overview" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center border rounded px-3 py-2 bg-white shadow-sm">
+                    <div>
+                        <span class="badge bg-success me-2"><i class="bi bi-check-circle-fill"></i> Safe</span>
+                        No failure detected!
+                    </div>
+                    <input type="datetime-local" class="form-control form-control-sm w-auto">
+                </div>
+                <div id="overview" class="py-4">
+                    <div class="mb-5">
+                        <div class="chart-toggle">
+                            <button class="active" onclick="showGraph('all', this)">All</button>
+                            <button onclick="showGraph('temp', this)">Temperature</button>
+                            <button onclick="showGraph('hum', this)">Humidity</button>
+                            <button onclick="showGraph('index', this)">Index</button>
+                        </div>
+                        <canvas id="sensorChart" height="100"></canvas>
+                        <div class="legend">
+                            <span class="temp">Temperature</span>
+                            <span class="hum">Humidity</span>
+                            <span class="index">Index</span>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card text-center p-4">
+                                <h5>Current Wind Speed</h5>
+                                <h2 class="text-primary">12.4 km/h</h2>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card text-center p-4">
+                                <h5>Today's Rainfall</h5>
+                                <h2 class="text-success">6.8 mm</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-container">
+                                <h5>Wind Speed (km/h)</h5>
+                                <canvas id="windChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-4">
+                            <div class="chart-container">
+                                <h5>Rainfall (mm)</h5>
+                                <canvas id="rainChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Details Tab -->
+            <div class="tab-pane fade" id="details" role="tabpanel">
+                <div id="details" class="py-4">
+                    <h5>Details</h5>
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="section-title">Client Details</div>
+                            <div class="action-links">
+                                <a href="#" class="text-primary">Edit</a>
+                                <a href="#" class="text-danger">Delete</a>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4"><span class="label">Client Name</span></div>
+                            <div class="col-md-8">ICRTC</div>
+                            <div class="col-md-4"><span class="label">Site</span></div>
+                            <div class="col-md-8">Pune</div>
+                            <div class="col-md-4"><span class="label">Added On</span></div>
+                            <div class="col-md-8">26 May 2025</div>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="mb-4">
+                        <div class="section-title">MWS Configuration</div>
+                        <div class="row mt-3">
+                            <div class="col-md-4"><span class="label">Device ID</span></div>
+                            <div class="col-md-8">MWS-001</div>
+                            <div class="col-md-4"><span class="label">Location</span></div>
+                            <div class="col-md-8">Pune</div>
+                            <div class="col-md-4"><span class="label">Deployment Date</span></div>
+                            <div class="col-md-8">26/05/2025</div>
+                            <div class="col-md-4"><span class="label">Firmware Version</span></div>
+                            <div class="col-md-8">v1.0.3</div>
+                            <div class="col-md-4"><span class="label">Data Update Interval</span></div>
+                            <div class="col-md-8">Every 1 minutes</div>
+                            <div class="col-md-4"><span class="label">Power Source</span></div>
+                            <div class="col-md-8">Solar + Battery Backup</div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-4"><span class="label">Latitude</span></div>
+                            <div class="col-md-8">18.5204° N</div>
+                            <div class="col-md-4"><span class="label">Longitude</span></div>
+                            <div class="col-md-8">73.8567° E</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Sensors Tab -->
+            <div class="tab-pane fade show active" id="sensors" role="tabpanel">
+                <div id="sensors" class="py-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div><h5>Sensors</h5></div>
+                        <div class="d-flex gap-2">
+                            <div><input type="datetime-local" class="form-control form-control-sm w-auto"></div>
+                            <div><button class="btn btn-sm rounded-pill btn-outline-danger">Export</button></div>
+                        </div>
+                    </div>
+                    <!-- Add Today/All toggle -->
+                    <div class="mb-3">
+    <button id="showLiveBtn" class="btn btn-outline-primary btn-sm me-2 active">Minute</button>
+    <button id="showTodayBtn" class="btn btn-outline-success btn-sm me-2">Today</button>
+    <button id="showWeeklyBtn" class="btn btn-outline-warning btn-sm">Weekly</button>
+</div>
+<div id="sensors-chart" style="max-width: 1000px; margin: 40px auto; padding: 24px 18px 32px 18px; background: #fff; border-radius: 16px; box-shadow: 0 2px 16px rgba(44,62,80,0.07);"></div>
+                    <div class="container py-4">
+                        <div class="table-responsive mt-4">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="fw-semibold">Date & Time</th>
+                                        <th class="fw-semibold">Temperature</th>
+                                        <th class="fw-semibold">Humidity</th>
+                                        <th class="fw-semibold">THI index</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                    <tr>
+                                        <td>13 May 2025, 02:10 pm</td>
+                                        <td>26&nbsp;&deg;C</td>
+                                        <td>65%</td>
+                                        <td>55%</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <nav class="mt-3">
+                            <ul class="pagination justify-content-center">
+                                <li class="page-item disabled"><a class="page-link" href="#">«</a></li>
+                                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                                <li class="page-item"><a class="page-link" href="#">»</a></li>
+                                <li class="page-item ms-3 d-flex align-items-center">
+                                    <span class="me-2">Go to</span>
+                                    <input type="number" class="form-control form-control-sm" style="width: 60px;">
+                                    <button class="btn btn-sm btn-warning ms-2">GO</button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="dashboard.js"></script>
+    <script>
+        // Initialize AOS
+        AOS.init();
+
+        // Chart.js: Overview tab charts
+        document.addEventListener('DOMContentLoaded', function () {
+            // Sensor Chart (Overview)
+            const ctx = document.getElementById('sensorChart').getContext('2d');
+            const labels = ['10:55', '11:00', '11:05', '11:10', '11:15', '11:20', '11:25', '11:30', '11:35'];
+            const datasets = {
+                temp: {
+                    label: 'Temperature (°C)',
+                    data: [28, 29, 30, 31, 30.5, 31.5, 32, 33, 34],
+                    borderColor: 'red',
+                    backgroundColor: 'rgba(255,0,0,0.1)',
+                    tension: 0.4,
+                    pointRadius: 3
+                },
+                hum: {
+                    label: 'Humidity (%)',
+                    data: [60, 61, 62, 63, 64, 65, 66, 67, 68],
+                    borderColor: 'blue',
+                    backgroundColor: 'rgba(0,0,255,0.1)',
+                    tension: 0.4,
+                    pointRadius: 3
+                },
+                index: {
+                    label: 'THI Index',
+                    data: [75, 76, 78, 79, 80, 81, 82, 83, 84],
+                    borderColor: 'orange',
+                    backgroundColor: 'rgba(255,165,0,0.1)',
+                    tension: 0.4,
+                    pointRadius: 3
+                }
+            };
+            window.chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [datasets.temp, datasets.hum, datasets.index]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+
+            // Chart toggle logic
+            window.showGraph = function(type, btn) {
+                document.querySelectorAll('.chart-toggle button').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                if (type === 'all') {
+                    chart.data.datasets = [datasets.temp, datasets.hum, datasets.index];
+                } else {
+                    chart.data.datasets = [datasets[type]];
+                }
+                chart.update();
+            };
+
+            // Wind Chart
+            const windCtx = document.getElementById("windChart").getContext("2d");
+            new Chart(windCtx, {
+                type: "line",
+                data: {
+                    labels: ["10:00", "11:00", "12:00", "13:00"],
+                    datasets: [{
+                        label: "Wind Speed (km/h)",
+                        data: [10.5, 12.4, 11.8, 13.2],
+                        borderColor: "#0d6efd",
+                        backgroundColor: "rgba(13, 110, 253, 0.2)",
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: "top" } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // Rain Chart
+            const rainCtx = document.getElementById("rainChart").getContext("2d");
+            new Chart(rainCtx, {
+                type: "bar",
+                data: {
+                    labels: ["Monday", "Tuesday", "Wednesday"],
+                    datasets: [{
+                        label: "Rainfall (mm)",
+                        data: [5.6, 2.3, 6.8],
+                        backgroundColor: "#198754"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: true } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // ApexCharts: Sensors tab (bar chart for day-by-day comparison)
+            var barOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Sensor Data Comparison (Day by Day)",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI per Day",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: ["13 May", "14 May", "15 May", "16 May", "17 May"],
+                    title: { text: "Date" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [26, 28, 27, 29, 30], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [65, 60, 62, 68, 70], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [55, 58, 60, 63, 65], color: "#28B463" }
+                ]
+            };
+
+            // Live data (simulate 8 points for the current day, e.g. every 2 hours)
+            var liveLabels = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00", "20:00", "22:00"];
+            var liveOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Live Sensor Data",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI (Today, every 2 hours)",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: liveLabels,
+                    title: { text: "Time" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [26, 27, 28, 29, 30, 29, 28, 27], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [60, 62, 64, 66, 68, 67, 65, 63], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [55, 57, 59, 61, 63, 62, 60, 58], color: "#28B463" }
+                ]
+            };
+
+            // Today (8 AM & 2 PM)
+            var todayOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Today's Sensor Data",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI at 8 AM & 2 PM",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: ["8 AM", "2 PM"],
+                    title: { text: "Time" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [27, 31], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [62, 68], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [58, 64], color: "#28B463" }
+                ]
+            };
+
+            // Weekly (Sunday to Saturday)
+            var weeklyOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Weekly Sensor Data",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI (Sunday to Saturday)",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+                    title: { text: "Day" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [27, 28, 29, 30, 31, 30, 29], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [65, 66, 67, 68, 69, 68, 67], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [58, 59, 60, 61, 62, 61, 60], color: "#28B463" }
+                ]
+            };
+
+            // Minute-wise data (simulate 12 points for every 5 minutes in an hour)
+            var minuteLabels = [
+                "10:00", "10:05", "10:10", "10:15", "10:20", "10:25",
+                "10:30", "10:35", "10:40", "10:45", "10:50", "10:55"
+            ];
+            var minuteOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false },
+                    background: '#fff',
+                    foreColor: '#333'
+                },
+                title: {
+                    text: "Minute-wise Sensor Data",
+                    align: "center",
+                    style: { fontSize: '20px', fontWeight: 600, color: '#1a1a2e' }
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI (Every 5 minutes)",
+                    align: "center",
+                    style: { fontSize: '15px', color: '#888', marginBottom: '16px' }
+                },
+                xaxis: {
+                    categories: minuteLabels,
+                    title: { text: "Time", style: { fontWeight: 600, color: '#343a40' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '14px', fontWeight: 500, colors: '#555' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values", style: { fontWeight: 600, color: '#343a40' } },
+                    labels: { style: { fontSize: '14px', fontWeight: 500, colors: '#555' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } },
+                    padding: { left: 20, right: 20, top: 20, bottom: 20 }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 },
+                    itemMargin: { horizontal: 18, vertical: 8 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '38%',
+                        endingShape: 'rounded',
+                        borderRadius: 6,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    }
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [26, 26.2, 26.5, 27, 27.3, 27.5, 27.8, 28, 28.2, 28.5, 28.7, 29], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66], color: "#28B463" }
+                ]
+            };
+
+            // Today (8 AM & 2 PM)
+            var todayOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Today's Sensor Data",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI at 8 AM & 2 PM",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: ["8 AM", "2 PM"],
+                    title: { text: "Time" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [27, 31], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [62, 68], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [58, 64], color: "#28B463" }
+                ]
+            };
+
+            // Weekly (Sunday to Saturday)
+            var weeklyOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false }
+                },
+                title: {
+                    text: "Weekly Sensor Data",
+                    align: "center"
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI (Sunday to Saturday)",
+                    align: "center",
+                    style: { fontSize: '14px', color: '#888' }
+                },
+                xaxis: {
+                    categories: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+                    title: { text: "Day" },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '13px' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values" },
+                    labels: { style: { fontSize: '13px' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '45%',
+                        endingShape: 'rounded'
+                    }
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [27, 28, 29, 30, 31, 30, 29], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [65, 66, 67, 68, 69, 68, 67], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [58, 59, 60, 61, 62, 61, 60], color: "#28B463" }
+                ]
+            };
+
+            // Minute-wise data (simulate 12 points for every 5 minutes in an hour)
+            var minuteLabels = [
+                "10:00", "10:05", "10:10", "10:15", "10:20", "10:25",
+                "10:30", "10:35", "10:40", "10:45", "10:50", "10:55"
+            ];
+            var minuteOptions = {
+                chart: {
+                    type: 'bar',
+                    height: 380,
+                    toolbar: { show: true },
+                    zoom: { enabled: false },
+                    background: '#fff',
+                    foreColor: '#333'
+                },
+                title: {
+                    text: "Minute-wise Sensor Data",
+                    align: "center",
+                    style: { fontSize: '20px', fontWeight: 600, color: '#1a1a2e' }
+                },
+                subtitle: {
+                    text: "Temperature, Humidity, and THI (Every 5 minutes)",
+                    align: "center",
+                    style: { fontSize: '15px', color: '#888', marginBottom: '16px' }
+                },
+                xaxis: {
+                    categories: minuteLabels,
+                    title: { text: "Time", style: { fontWeight: 600, color: '#343a40' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' },
+                    labels: { style: { fontSize: '14px', fontWeight: 500, colors: '#555' } }
+                },
+                yaxis: {
+                    min: 0,
+                    max: 100,
+                    title: { text: "Values", style: { fontWeight: 600, color: '#343a40' } },
+                    labels: { style: { fontSize: '14px', fontWeight: 500, colors: '#555' } },
+                    axisBorder: { show: true, color: '#888' },
+                    axisTicks: { show: true, color: '#888' }
+                },
+                grid: {
+                    borderColor: '#e7e7e7',
+                    strokeDashArray: 4,
+                    xaxis: { lines: { show: true } },
+                    yaxis: { lines: { show: true } },
+                    padding: { left: 20, right: 20, top: 20, bottom: 20 }
+                },
+                legend: {
+                    position: 'top',
+                    horizontalAlign: 'center',
+                    fontSize: '15px',
+                    markers: { width: 16, height: 16, radius: 12 },
+                    itemMargin: { horizontal: 18, vertical: 8 }
+                },
+                tooltip: {
+                    shared: true,
+                    intersect: false,
+                    y: {
+                        formatter: function(val, opts) {
+                            const units = ["°C", "%", "%"];
+                            return val + " " + units[opts.seriesIndex];
+                        }
+                    }
+                },
+                plotOptions: {
+                    bar: {
+                        horizontal: false,
+                        columnWidth: '38%',
+                        endingShape: 'rounded',
+                        borderRadius: 6,
+                        dataLabels: {
+                            position: 'top'
+                        }
+                    }
+                },
+                dataLabels: {
+                    enabled: false
+                },
+                series: [
+                    { name: "Temperature (°C)", data: [26, 26.2, 26.5, 27, 27.3, 27.5, 27.8, 28, 28.2, 28.5, 28.7, 29], color: "#FF5733" },
+                    { name: "Humidity (%)", data: [60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71], color: "#3498DB" },
+                    { name: "THI Index (%)", data: [55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66], color: "#28B463" }
+                ]
+            };
+
+            // Destroy previous chart if exists
+            if (window.sensorsChart) window.sensorsChart.destroy();
+            window.sensorsChart = new ApexCharts(document.querySelector("#sensors-chart"), minuteOptions);
+            window.sensorsChart.render();
+
+            // Toggle logic for Minute/Today/Weekly
+            var showLiveBtn = document.getElementById('showLiveBtn');
+            var showTodayBtn = document.getElementById('showTodayBtn');
+            var showWeeklyBtn = document.getElementById('showWeeklyBtn');
+
+            showLiveBtn.addEventListener('click', function() {
+                showLiveBtn.classList.add('active');
+                showTodayBtn.classList.remove('active');
+                showWeeklyBtn.classList.remove('active');
+                window.sensorsChart.updateOptions(minuteOptions, true, true);
+            });
+
+            showTodayBtn.addEventListener('click', function() {
+                showTodayBtn.classList.add('active');
+                showLiveBtn.classList.remove('active');
+                showWeeklyBtn.classList.remove('active');
+                window.sensorsChart.updateOptions(todayOptions, true, true);
+            });
+
+            showWeeklyBtn.addEventListener('click', function() {
+                showWeeklyBtn.classList.add('active');
+                showLiveBtn.classList.remove('active');
+                showTodayBtn.classList.remove('active');
+                window.sensorsChart.updateOptions(weeklyOptions, true, true);
+            });
+        });
+    </script>
+</body>
+
+</html>

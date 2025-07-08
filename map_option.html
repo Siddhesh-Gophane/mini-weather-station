@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Device Map Filter</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 400px; }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h3 class="mb-4">Device Map Filter</h3>
+    <form class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label for="stateSelect" class="form-label">State</label>
+            <select id="stateSelect" class="form-select">
+                <option value="">Select State</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="districtSelect" class="form-label">District</label>
+            <select id="districtSelect" class="form-select">
+                <option value="">Select District</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="talukaSelect" class="form-label">Taluka</label>
+            <select id="talukaSelect" class="form-select">
+                <option value="">Select Taluka</option>
+            </select>
+        </div>
+    </form>
+    <div id="map"></div>
+</div>
+<script>
+// Sample data
+const data = {
+    "Maharashtra": {
+        "Pune": ["Haveli", "Mulshi"],
+        "Mumbai": ["Andheri", "Borivali"]
+    },
+    "Gujarat": {
+        "Ahmedabad": ["Daskroi", "Sanand"],
+        "Surat": ["Choryasi", "Kamrej"]
+    }
+};
+
+const devices = [
+    { name: "Device 1", state: "Maharashtra", district: "Pune", taluka: "Haveli", lat: 18.5204, lng: 73.8567 },
+    { name: "Device 2", state: "Maharashtra", district: "Pune", taluka: "Mulshi", lat: 18.5167, lng: 73.3667 },
+    { name: "Device 3", state: "Maharashtra", district: "Mumbai", taluka: "Andheri", lat: 19.1197, lng: 72.8468 },
+    { name: "Device 4", state: "Gujarat", district: "Ahmedabad", taluka: "Daskroi", lat: 23.0225, lng: 72.5714 },
+    { name: "Device 5", state: "Gujarat", district: "Surat", taluka: "Kamrej", lat: 21.1702, lng: 72.8311 }
+];
+
+// Populate State dropdown
+const stateSelect = document.getElementById('stateSelect');
+const districtSelect = document.getElementById('districtSelect');
+const talukaSelect = document.getElementById('talukaSelect');
+
+function populateStates() {
+    stateSelect.innerHTML = '<option value="">Select State</option>';
+    Object.keys(data).forEach(state => {
+        stateSelect.innerHTML += `<option value="${state}">${state}</option>`;
+    });
+}
+
+function populateDistricts() {
+    districtSelect.innerHTML = '<option value="">Select District</option>';
+    talukaSelect.innerHTML = '<option value="">Select Taluka</option>';
+    const state = stateSelect.value;
+    if (state && data[state]) {
+        Object.keys(data[state]).forEach(district => {
+            districtSelect.innerHTML += `<option value="${district}">${district}</option>`;
+        });
+    }
+}
+
+function populateTalukas() {
+    talukaSelect.innerHTML = '<option value="">Select Taluka</option>';
+    const state = stateSelect.value;
+    const district = districtSelect.value;
+    if (state && district && data[state][district]) {
+        data[state][district].forEach(taluka => {
+            talukaSelect.innerHTML += `<option value="${taluka}">${taluka}</option>`;
+        });
+    }
+}
+
+// Map setup
+const map = L.map('map').setView([20.5937, 78.9629], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let markers = [];
+
+function clearMarkers() {
+    markers.forEach(marker => map.removeLayer(marker));
+    markers = [];
+}
+
+function filterDevices() {
+    const state = stateSelect.value;
+    const district = districtSelect.value;
+    const taluka = talukaSelect.value;
+    let filtered = devices;
+    if (state) filtered = filtered.filter(d => d.state === state);
+    if (district) filtered = filtered.filter(d => d.district === district);
+    if (taluka) filtered = filtered.filter(d => d.taluka === taluka);
+
+    clearMarkers();
+    if (filtered.length > 0) {
+        filtered.forEach(device => {
+            const marker = L.marker([device.lat, device.lng]).addTo(map)
+                .bindPopup(`<b>${device.name}</b><br>${device.state}, ${device.district}, ${device.taluka}`);
+            markers.push(marker);
+        });
+        map.setView([filtered[0].lat, filtered[0].lng], 10);
+    }
+}
+
+stateSelect.addEventListener('change', () => {
+    populateDistricts();
+    filterDevices();
+});
+districtSelect.addEventListener('change', () => {
+    populateTalukas();
+    filterDevices();
+});
+talukaSelect.addEventListener('change', filterDevices);
+
+populateStates();
+filterDevices();
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+</body>
+</html>
